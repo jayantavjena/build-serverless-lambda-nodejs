@@ -1,0 +1,130 @@
+Resources:
+  artifactStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+  codeRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Ref RepositoryName
+
+  codeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codebuild.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 'logs:*'
+                - 'ec2:CreateNetworkInterface'
+                - 'ec2:DescribeNetworkInterfaces'
+                - 'ec2:DeleteNetworkInterface'
+                - 'ec2:DescribeSubnets'
+                - 'ec2:DescribeSecurityGroups'
+                - 'ec2:DescribeDhcpOptions'
+                - 'ec2:DescribeVpcs'
+                - 'ec2:CreateNetworkInterfacePermission'
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                - 's3:Get*'
+                - 's3:Put*'
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:aws:s3:::${artifactStoreBucket}/*"
+
+  build:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${BranchName}-${RepositoryName}"
+      Source:
+        Type: CODECOMMIT
+        Location: !Sub "${codeRepository.CloneUrlHttp}"
+        InsecureSsl: false
+      Artifacts:
+        Type: S3
+        Location: !Ref 'artifactStoreBucket'
+        NamespaceType: NONE
+        Name: build-output.zip
+        Packaging: ZIP
+      Environment:
+        Type: LINUX_CONTAINER
+        Image: "aws/codebuild/nodejs:6.3.1"
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          -
+            Name: ARTIFACTS_BUCKET
+            Type: PLAINTEXT
+            Value: !Ref 'artifactStoreBucket'
+      ServiceRole: !Ref codeBuildRole
+
+  pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: serverless-lambda-nodejs
+      ArtifactStore:
+        Type: S3
+        Location: !Ref 'artifactStoreBucket'
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service"
+      Stages:
+        -
+          Name: Source
+          Actions:
+            -
+              Name: Source-CodeCommit
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: 1
+              RunOrder: 1
+              Configuration:
+                BranchName: !Ref 'BranchName'
+                RepositoryName: !Ref 'RepositoryName'
+              OutputArtifacts:
+                -
+                  Name: source
+        -
+          Name: Build
+          Actions:
+            -
+              Name: Build-CodeBuild
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              RunOrder: 1
+              Configuration:
+                ProjectName: !Ref 'build'
+              InputArtifacts:
+                -
+                  Name: source
+              OutputArtifacts:
+                -
+                  Name: build-output
+
+Parameters:
+  RepositoryName:
+    Type: String
+    Default: build-serverless-lambda-nodejs
+
+  BranchName:
+    Type: String
+    Default: develop
+
+Outputs:
+  CodeRepositoryCloneUrlHttp:
+    Value: !Sub "${codeRepository.CloneUrlHttp}"
