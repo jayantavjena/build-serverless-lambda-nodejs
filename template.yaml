@@ -73,7 +73,7 @@ Resources:
   pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: serverless-lambda-nodejs
+      Name: !Sub "${BranchName}-${RepositoryName}"
       ArtifactStore:
         Type: S3
         Location: !Ref 'artifactStoreBucket'
