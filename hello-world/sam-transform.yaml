@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Hello World API
+Resources:
+
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs6.10
+      Environment:
+        Variables:
+          STAGE: !Ref stage
+      Events:
+        MyApi:
+          Type: Api
+          Properties:
+            Path: /HelloWorld
+            Method: GET
+
+Parameters:
+  stage:
+    Type: String
+    Default: beta
+

@@ -1,0 +1,18 @@
+version: 0.2
+
+env:
+  variables:
+    ARTIFACTS_BUCKET: "to-be-provided"
+
+phases:
+  install:
+    commands:
+      - cd hello-world && npm install
+      - aws cloudformation package --template-file sam-transform.yaml --output-template-file output-template.yaml --s3-bucket $ARTIFACTS_BUCKET
+
+artifacts:
+  type: zip
+  base-directory: hello-world
+  discard-paths: yes
+  files:
+    - output-template.yaml
