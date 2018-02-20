@@ -5,6 +5,15 @@ Use AWS CodeBuild to build a Lambda function written in node.js (deployed using 
   - A git repository in AWS CodeCommit, 
   - the build project in AWS CodeBuild, 
   - and a build pipeline in AWS CodePipeline that triggers builds on changes to the ```develop``` branch in the repository   
+  
+- Pre-requisite: A service role for AWS CodePipeline must exist (usually created the first time the service is used, say, from the AWS Management Console) or can be created as follows:
+  
+```
+$ cd iam
+iam $ ./create_service_role.sh
+  
+```
+  
 - Provision the CloudFormation stack as follows:
 
 ```
